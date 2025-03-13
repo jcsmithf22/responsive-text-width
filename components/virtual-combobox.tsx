@@ -172,6 +172,8 @@ interface VirtualizedComboboxProps {
   searchPlaceholder?: string;
   width?: string;
   height?: string;
+  value?: string;
+  onChange?: (value: string) => void;
 }
 
 export function VirtualizedCombobox({
@@ -179,9 +181,10 @@ export function VirtualizedCombobox({
   searchPlaceholder = 'Search items...',
   width = '400px',
   height = '400px',
+  value,
+  onChange,
 }: VirtualizedComboboxProps) {
   const [open, setOpen] = React.useState(false);
-  const [selectedOption, setSelectedOption] = React.useState('');
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -195,7 +198,7 @@ export function VirtualizedCombobox({
             width: width,
           }}
         >
-          {selectedOption ? options.find((option) => option === selectedOption) : searchPlaceholder}
+          {value ? options.find((option) => option === value) : searchPlaceholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -204,9 +207,9 @@ export function VirtualizedCombobox({
           height={height}
           options={options.map((option) => ({ value: option, label: option }))}
           placeholder={searchPlaceholder}
-          selectedOption={selectedOption}
+          selectedOption={value || ''}
           onSelectOption={(currentValue) => {
-            setSelectedOption(currentValue === selectedOption ? '' : currentValue);
+            onChange?.(currentValue);
             setOpen(false);
           }}
         />

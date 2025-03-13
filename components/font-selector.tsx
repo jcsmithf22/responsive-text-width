@@ -2,10 +2,10 @@
 
 import * as React from "react"
 import { Check, Loader2 } from "lucide-react"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { VirtualizedCombobox } from "./virtual-combobox"
 
 interface FontSelectorProps {
   value: string
@@ -106,11 +106,8 @@ const loadFont = async (fontId: string, family: string): Promise<boolean> => {
 }
 
 const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
-  const [open, setOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
   const [fonts, setFonts] = React.useState<Array<{ id: string, family: string }>>([])
-  const [searchInput, setSearchInput] = React.useState("")
-  const [loadingFont, setLoadingFont] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
   // Fetch fonts when component mounts
@@ -162,100 +159,51 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
     fetchFonts()
   }, [])
 
-  // Filter fonts based on search input
-  const filteredFonts = React.useMemo(() => {
-    const searchTerm = searchInput.toLowerCase()
-    return searchTerm
-      ? fonts.filter(font => 
-          font.family.toLowerCase().includes(searchTerm) ||
-          font.id.toLowerCase().includes(searchTerm)
-        )
-      : fonts
-  }, [fonts, searchInput])
-
   // Handle font selection
   const handleSelect = async (fontFamily: string) => {
     const font = fonts.find(f => f.family === fontFamily)
     if (!font) return
 
-    setLoadingFont(font.id)
-    setError(null)
     try {
       const success = await loadFont(font.id, font.family)
       if (!success) {
         throw new Error(`Failed to load font ${font.family}`)
       }
       onChange(fontFamily)
-      setOpen(false)
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load font"
       setError(message)
-    } finally {
-      setLoadingFont(null)
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        Loading fonts...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="py-6 text-center text-sm text-destructive">
+        {error}
+      </div>
+    )
+  }
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-          style={{ fontFamily: value }}
-        >
-          {value || "Select a font..."}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0">
-        <Command shouldFilter={false}>
-          <CommandInput
-            placeholder="Search fonts..."
-            value={searchInput}
-            onValueChange={setSearchInput}
-          />
-          <CommandList>
-            {loading ? (
-              <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading fonts...
-              </div>
-            ) : error ? (
-              <div className="py-6 text-center text-sm text-destructive">
-                {error}
-              </div>
-            ) : filteredFonts.length === 0 ? (
-              <CommandEmpty>No fonts found.</CommandEmpty>
-            ) : (
-              <CommandGroup className="max-h-[300px] overflow-y-auto">
-                {filteredFonts.map((font) => (
-                  <CommandItem
-                    key={font.id}
-                    value={font.family}
-                    onSelect={handleSelect}
-                    className="cursor-pointer"
-                    disabled={loadingFont === font.id}
-                  >
-                    {loadingFont === font.id ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Check
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          value === font.family ? "opacity-100" : "opacity-0"
-                        )}
-                      />
-                    )}
-                    <span style={{ fontFamily: font.family }}>{font.family}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <div className="w-full">
+      <VirtualizedCombobox
+        options={fonts.map(f => f.family)}
+        searchPlaceholder="Select a font..."
+        width="100%"
+        height="300px"
+        value={value}
+        onChange={handleSelect}
+      />
+    </div>
   )
 }
 
