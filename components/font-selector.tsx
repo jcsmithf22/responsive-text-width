@@ -1,221 +1,199 @@
 "use client"
 
-// Start loading fonts immediately when this module is imported
-let fontListPromise: Promise<FontListItem[]> | null = null
-
-import React, { useState, useEffect, useCallback, useMemo } from "react"
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import * as React from "react"
+import { Check, Loader2 } from "lucide-react"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { useVirtualizer, VirtualItem } from "@tanstack/react-virtual"
-
-// Fontsource API types
-type FontListItem = {
-  id: string
-  family: string
-}
+import { cn } from "@/lib/utils"
 
 interface FontSelectorProps {
   value: string
   onChange: (value: string) => void
 }
 
-// Global state for fonts
-let globalFontList: FontListItem[] = []
-const loadedFonts = new Map<string, Promise<void>>()
-
-// Common Google fonts to preload
-const commonFonts = [
-  // Sans-serif fonts
-  'roboto',
-  'open-sans',
-  'lato',
-  'montserrat',
-  'poppins',
-  'inter',
-  'nunito',
-  'ubuntu',
-  'source-sans-3',
-  'pt-sans',
-  'noto-sans',
-
-  // Serif fonts
-  'merriweather',
-  'playfair-display',
-  'pt-serif',
-  'noto-serif',
-  'libre-baskerville',
-
-  // Display fonts
-  'anton',
-  'exo-2',
-  'orbitron',
-
-  // Monospace fonts
-  'inconsolata',
-  'space-mono'
-]
-
-// Load font CSS
-async function loadFontCSS(font: FontListItem, isCommon = false): Promise<void> {
-  // Return existing promise if font is already loading
-  const existingPromise = loadedFonts.get(font.id)
-  if (existingPromise) return existingPromise
-
-  const loadPromise = (async () => {
-    try {
-      const response = await fetch(`https://api.fontsource.org/v1/fonts/${font.id}`)
-      if (!response.ok) throw new Error("Failed to fetch font details")
-      
-      const fontDetails = await response.json()
-      if (!fontDetails.variants) throw new Error("No font variants found")
-
-      const defaultWeight = fontDetails.weights.includes(400) ? '400' : fontDetails.weights[0].toString()
-      const defaultStyle = fontDetails.styles.includes('normal') ? 'normal' : fontDetails.styles[0]
-      
-      const variantUrl = fontDetails.variants[defaultWeight]?.[defaultStyle]?.latin?.url?.woff2
-      if (!variantUrl) throw new Error("Font URL not found")
-
-      const fontFace = new FontFace(font.family, `url(${variantUrl})`, {
-        weight: defaultWeight,
-        style: defaultStyle,
-        // Use 'optional' for non-common fonts to prevent layout shift
-        // Use 'swap' for common fonts to ensure they load quickly
-        display: isCommon ? 'swap' : 'optional'
-      })
-
-      const loadedFont = await fontFace.load()
-      document.fonts.add(loadedFont)
-    } catch (err) {
-      // Remove failed promise from cache
-      loadedFonts.delete(font.id)
-      throw err
+interface FontVariant {
+  [weight: string]: {
+    [style: string]: {
+      [subset: string]: {
+        url: {
+          woff2: string
+          woff: string
+          ttf: string
+        }
+      }
     }
-  })()
-
-  // Cache the promise
-  loadedFonts.set(font.id, loadPromise)
-  return loadPromise
-}
-
-// Sort fonts with common fonts first
-function sortFonts(fonts: FontListItem[]): FontListItem[] {
-  return [...fonts].sort((a, b) => {
-    const aIsCommon = commonFonts.includes(a.id)
-    const bIsCommon = commonFonts.includes(b.id)
-    if (aIsCommon && !bIsCommon) return -1
-    if (!aIsCommon && bIsCommon) return 1
-    return a.family.localeCompare(b.family)
-  })
-}
-
-// Fetch and process font list
-async function fetchFontList(): Promise<FontListItem[]> {
-  try {
-    const response = await fetch('https://api.fontsource.org/fontlist?family')
-    if (!response.ok) throw new Error("Failed to fetch fonts")
-
-    const fontList = await response.json() as Record<string, string>
-
-    const fonts = Object.entries(fontList)
-      .map(([id, family]) => ({
-        id,
-        family
-      }))
-      .filter(font => !font.family.includes('icons'))
-
-    const sortedFonts = sortFonts(fonts)
-
-    // Preload common fonts in parallel
-    await Promise.allSettled(
-      sortedFonts
-        .filter(font => commonFonts.includes(font.id))
-        .map(font => loadFontCSS(font, true))
-    )
-
-    return sortedFonts
-  } catch (err) {
-    console.error("Error fetching font list:", err)
-    return []
   }
 }
 
-// Initialize font list as soon as this module is loaded
-if (typeof window !== 'undefined' && !fontListPromise) {
-  fontListPromise = fetchFontList().then(fonts => {
-    globalFontList = fonts
-    return fonts
-  })
+interface FontDetails {
+  id: string
+  family: string
+  subsets: string[]
+  weights: number[]
+  styles: string[]
+  defSubset: string
+  unicodeRange: Record<string, string>
+  variable: boolean
+  category: string
+  version: string
+  type: string
+  variants: FontVariant
 }
 
+// Cache for loaded fonts and their details
+const loadedFonts = new Map<string, Promise<FontDetails>>()
+const loadedFontFaces = new Set<string>()
 
-const ITEM_HEIGHT = 32
+// Common fonts to prioritize in sorting
+const commonFonts = [
+  'roboto', 'open-sans', 'lato', 'montserrat', 'poppins', 'inter', 'nunito',
+  'ubuntu', 'source-sans-3', 'pt-sans', 'noto-sans', 'merriweather',
+  'playfair-display', 'pt-serif', 'noto-serif', 'libre-baskerville',
+  'anton', 'exo-2', 'orbitron', 'inconsolata', 'space-mono'
+]
+
+// Function to load font details and create FontFace
+const loadFont = async (fontId: string, family: string): Promise<boolean> => {
+  // Return early if the font is already loaded
+  if (loadedFontFaces.has(fontId)) return true
+
+  try {
+    // Fetch font details if not already fetching
+    let fontDetailsPromise = loadedFonts.get(fontId)
+    if (!fontDetailsPromise) {
+      fontDetailsPromise = fetch(`https://api.fontsource.org/v1/fonts/${fontId}`)
+        .then(async res => {
+          if (!res.ok) throw new Error(`Failed to fetch font details: ${res.statusText}`)
+          return res.json()
+        })
+      loadedFonts.set(fontId, fontDetailsPromise)
+    }
+
+    const fontDetails = await fontDetailsPromise
+
+    // Get the default weight and style
+    const weight = fontDetails.weights.includes(400) ? 400 : fontDetails.weights[0]
+    const style = fontDetails.styles.includes('normal') ? 'normal' : fontDetails.styles[0]
+    const subset = fontDetails.defSubset || 'latin'
+
+    // Ensure we have the necessary variant data
+    const variant = fontDetails.variants[weight]?.[style]?.[subset]
+    if (!variant?.url?.woff2) {
+      throw new Error(`Font variant not found for ${family}`)
+    }
+
+    // Create and load the FontFace
+    const fontFace = new FontFace(family, `url(${variant.url.woff2})`, {
+      weight: weight.toString(),
+      style,
+      unicodeRange: fontDetails.unicodeRange[subset],
+      display: commonFonts.includes(fontId) ? 'swap' : 'optional' // Use swap for common fonts
+    })
+
+    // Load the font and add it to the document
+    await fontFace.load()
+    document.fonts.add(fontFace)
+    loadedFontFaces.add(fontId)
+
+    return true
+  } catch (error) {
+    console.error(`Error loading font ${family}:`, error)
+    // Remove failed promise from cache so it can be retried
+    loadedFonts.delete(fontId)
+    return false
+  }
+}
 
 const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
-  const [open, setOpen] = useState(false)
-  const [searchInput, setSearchInput] = useState("")
-  const [loadingFont, setLoadingFont] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const parentRef = React.useRef<HTMLDivElement>(null)
+  const [open, setOpen] = React.useState(false)
+  const [loading, setLoading] = React.useState(false)
+  const [fonts, setFonts] = React.useState<Array<{ id: string, family: string }>>([])
+  const [searchInput, setSearchInput] = React.useState("")
+  const [loadingFont, setLoadingFont] = React.useState<string | null>(null)
+  const [error, setError] = React.useState<string | null>(null)
 
-  // Load fonts if not already loaded
-  useEffect(() => {
-    if (fontListPromise) fontListPromise.then()
+  // Fetch fonts when component mounts
+  React.useEffect(() => {
+    async function fetchFonts() {
+      setLoading(true)
+      setError(null)
+      try {
+        const response = await fetch("https://api.fontsource.org/fontlist?family")
+        if (!response.ok) throw new Error(`Failed to fetch fonts: ${response.statusText}`)
+        
+        const fontMap = await response.json() as Record<string, string>
+        
+        // Convert the font map to our format and filter out icon fonts
+        const fontList = Object.entries(fontMap)
+          .filter(([_, family]) => !family.toLowerCase().includes('icon'))
+          .map(([id, family]) => ({
+            id,
+            family
+          }))
+          // Sort with common fonts first, then alphabetically
+          .sort((a, b) => {
+            const aIsCommon = commonFonts.includes(a.id)
+            const bIsCommon = commonFonts.includes(b.id)
+            if (aIsCommon && !bIsCommon) return -1
+            if (!aIsCommon && bIsCommon) return 1
+            return a.family.localeCompare(b.family)
+          })
+
+        setFonts(fontList)
+
+        // Preload common fonts in parallel
+        await Promise.allSettled(
+          commonFonts.map(async (fontId) => {
+            const font = fontList.find(f => f.id === fontId)
+            if (font) {
+              await loadFont(font.id, font.family)
+            }
+          })
+        )
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to fetch fonts"
+        console.error("Error fetching fonts:", error)
+        setError(message)
+      }
+      setLoading(false)
+    }
+
+    fetchFonts()
   }, [])
 
-  // Clear search when opening
-  useEffect(() => {
-    if (open) setSearchInput("")
-  }, [open])
-
   // Filter fonts based on search input
-  const filteredFonts = useMemo(() => {
+  const filteredFonts = React.useMemo(() => {
     const searchTerm = searchInput.toLowerCase()
-    console.log(searchTerm)
     return searchTerm
-      ? globalFontList.filter(font =>
+      ? fonts.filter(font => 
           font.family.toLowerCase().includes(searchTerm) ||
           font.id.toLowerCase().includes(searchTerm)
         )
-      : globalFontList
-  }, [searchInput])
+      : fonts
+  }, [fonts, searchInput])
 
-  const virtualizer = useVirtualizer({
-    count: filteredFonts.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => ITEM_HEIGHT,
-    overscan: 5,
-  })
+  // Handle font selection
+  const handleSelect = async (fontFamily: string) => {
+    const font = fonts.find(f => f.family === fontFamily)
+    if (!font) return
 
-  // Load font CSS when selected
-  const handleFontSelect = useCallback(async (font: FontListItem) => {
     setLoadingFont(font.id)
+    setError(null)
     try {
-      await loadFontCSS(font, commonFonts.includes(font.id))
-      onChange(font.family)
+      const success = await loadFont(font.id, font.family)
+      if (!success) {
+        throw new Error(`Failed to load font ${font.family}`)
+      }
+      onChange(fontFamily)
       setOpen(false)
-      setSearchInput("")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load font")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load font"
+      setError(message)
     } finally {
       setLoadingFont(null)
     }
-  }, [onChange])
-
-  
-console.log(filteredFonts.length)
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -224,83 +202,57 @@ console.log(filteredFonts.length)
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="w-full justify-between font-normal"
+          style={{ fontFamily: value }}
         >
-          <span style={{ fontFamily: value }}>{value || "Select a font..."}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          {value || "Select a font..."}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[300px] p-0" align="start">
+      <PopoverContent className="w-[300px] p-0">
         <Command shouldFilter={false}>
-          <CommandInput 
-            placeholder="Search fonts..." 
+          <CommandInput
+            placeholder="Search fonts..."
             value={searchInput}
             onValueChange={setSearchInput}
-            className="h-9"
           />
-          {/* <CommandEmpty className="py-6 text-center text-sm">
-            {filteredFonts.length === 0 && globalFontList.length === 0 ? (
-              <div className="flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Loading fonts...</span>
+          <CommandList>
+            {loading ? (
+              <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading fonts...
               </div>
             ) : error ? (
-              error
-            ) : searchInput ? (
-              "No fonts found."
+              <div className="py-6 text-center text-sm text-destructive">
+                {error}
+              </div>
+            ) : filteredFonts.length === 0 ? (
+              <CommandEmpty>No fonts found.</CommandEmpty>
             ) : (
-              "Type to search fonts..."
-            )}
-          </CommandEmpty> */}
-          <CommandGroup 
-            ref={parentRef}
-            style={{
-              height: '300px',
-              width: '100%',
-              overflow: 'auto'
-            }}
-          >
-            <div
-              style={{
-                height: `${virtualizer.getTotalSize()}px`,
-                width: '100%',
-                position: 'relative'
-              }}
-            >
-              {virtualizer.getVirtualItems().map((virtualRow: VirtualItem) => {
-                const font = filteredFonts[virtualRow.index]
-                return (
+              <CommandGroup className="max-h-[300px] overflow-y-auto">
+                {filteredFonts.map((font) => (
                   <CommandItem
                     key={font.id}
                     value={font.family}
-                    onSelect={() => handleFontSelect(font)}
-                    className={cn(
-                      "cursor-pointer absolute top-0 left-0 w-full",
-                      loadingFont === font.id && "opacity-50 pointer-events-none"
-                    )}
-                    style={{
-                      height: `${virtualRow.size}px`,
-                      transform: `translateY(${virtualRow.start}px)`
-                    }}
+                    onSelect={handleSelect}
+                    className="cursor-pointer"
+                    disabled={loadingFont === font.id}
                   >
-                    <div className="flex items-center gap-2 flex-1">
-                      {loadingFont === font.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Check
-                          className={cn(
-                            "h-4 w-4",
-                            value === font.family ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                      )}
-                      <span style={{ fontFamily: font.family }}>{font.family}</span>
-                    </div>
+                    {loadingFont === font.id ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === font.family ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                    )}
+                    <span style={{ fontFamily: font.family }}>{font.family}</span>
                   </CommandItem>
-                )
-              })}
-            </div>
-          </CommandGroup>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>
