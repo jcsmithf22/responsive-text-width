@@ -160,6 +160,7 @@ if (typeof window !== 'undefined' && !fontListPromise) {
   })
 }
 
+
 const ITEM_HEIGHT = 32
 
 const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
@@ -182,6 +183,7 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
   // Filter fonts based on search input
   const filteredFonts = useMemo(() => {
     const searchTerm = searchInput.toLowerCase()
+    console.log(searchTerm)
     return searchTerm
       ? globalFontList.filter(font =>
           font.family.toLowerCase().includes(searchTerm) ||
@@ -212,6 +214,9 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
     }
   }, [onChange])
 
+  
+console.log(filteredFonts.length)
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -233,7 +238,7 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
             onValueChange={setSearchInput}
             className="h-9"
           />
-          <CommandEmpty className="py-6 text-center text-sm">
+          {/* <CommandEmpty className="py-6 text-center text-sm">
             {filteredFonts.length === 0 && globalFontList.length === 0 ? (
               <div className="flex items-center justify-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -246,14 +251,13 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
             ) : (
               "Type to search fonts..."
             )}
-          </CommandEmpty>
+          </CommandEmpty> */}
           <CommandGroup 
             ref={parentRef}
-            className="max-h-[300px] overflow-auto"
             style={{
               height: '300px',
               width: '100%',
-              position: 'relative'
+              overflow: 'auto'
             }}
           >
             <div
