@@ -1,21 +1,27 @@
-"use client"
+"use client";
 
-import React, { useState, useCallback } from "react"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Check, AlertCircle } from "lucide-react"
-import { Unit, ValueWithUnit } from "@/types"
-import { evaluateExpression } from "@/lib/evaluate-expression"
+import React, { useState, useCallback } from "react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Check, AlertCircle } from "lucide-react";
+import { Unit, ValueWithUnit } from "@/types";
+import { evaluateExpression } from "@/lib/evaluate-expression";
 
 interface UnitInputProps {
-  id?: string
-  value: ValueWithUnit
-  onChange: (value: ValueWithUnit) => void
-  min?: number
-  max?: number
-  allowedUnits?: Unit[]
-  className?: string
-  compact?: boolean
+  id?: string;
+  value: ValueWithUnit;
+  onChange: (value: ValueWithUnit) => void;
+  min?: number;
+  max?: number;
+  allowedUnits?: Unit[];
+  className?: string;
+  compact?: boolean;
 }
 
 export default function UnitInput({
@@ -28,76 +34,90 @@ export default function UnitInput({
   className = "",
   compact = false,
 }: UnitInputProps) {
-  const [localValue, setLocalValue] = useState(value.value.toString())
-  const [localUnit, setLocalUnit] = useState<Unit>(value.unit)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isValid, setIsValid] = useState(true)
+  const [localValue, setLocalValue] = useState(value.value.toString());
+  const [localUnit, setLocalUnit] = useState<Unit>(value.unit);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isValid, setIsValid] = useState(true);
 
   // Validate expression
-  const validate = useCallback((expr: string) => {
-    try {
-      const result = evaluateExpression(expr)
-      return !isNaN(result.value) && result.value >= min && result.value <= max
-    } catch (err) {
-      return false
-    }
-  }, [min, max])
+  const validate = useCallback(
+    (expr: string) => {
+      try {
+        const result = evaluateExpression(expr);
+        return (
+          !isNaN(result.value) && result.value >= min && result.value <= max
+        );
+      } catch (err) {
+        return false;
+      }
+    },
+    [min, max],
+  );
 
   // Handle input change
-  const handleValueChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    setLocalValue(newValue)
-    setIsEditing(true)
-    setIsValid(validate(newValue))
-  }, [validate])
+  const handleValueChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
+      setLocalValue(newValue);
+      setIsEditing(true);
+      setIsValid(validate(newValue));
+    },
+    [validate],
+  );
 
   // Handle unit change
-  const handleUnitChange = useCallback((unit: Unit) => {
-    setLocalUnit(unit)
-    if (isValid) {
-      try {
-        const result = evaluateExpression(localValue)
-        onChange({ value: result.value, unit })
-      } catch (err) {
-        // Keep existing value if expression is invalid
-        onChange({ value: value.value, unit })
+  const handleUnitChange = useCallback(
+    (unit: Unit) => {
+      setLocalUnit(unit);
+      if (isValid) {
+        try {
+          const result = evaluateExpression(localValue);
+          onChange({ value: result.value, unit });
+        } catch (err) {
+          // Keep existing value if expression is invalid
+          onChange({ value: value.value, unit });
+        }
       }
-    }
-  }, [onChange, localValue, isValid, value.value])
+    },
+    [onChange, localValue, isValid, value.value],
+  );
 
   // Handle blur and enter key
   const handleFinishEdit = useCallback(() => {
     try {
-      const result = evaluateExpression(localValue)
+      const result = evaluateExpression(localValue);
       if (result.value >= min && result.value <= max) {
         // If expression has a unit, use it, otherwise keep current unit
-        onChange({ 
+        onChange({
           value: result.value,
-          unit: result.unit === 'none' ? localUnit : result.unit
-        })
-        setLocalValue(result.value.toString())
-        setLocalUnit(result.unit === 'none' ? localUnit : result.unit)
-        setIsValid(true)
+          unit: result.unit === "none" ? localUnit : result.unit,
+        });
+        setLocalValue(result.value.toString());
+        setLocalUnit(result.unit === "none" ? localUnit : result.unit);
+        setIsValid(true);
       } else {
-        setLocalValue(value.value.toString())
-        setIsValid(false)
+        setLocalValue(value.value.toString());
+        setIsValid(false);
       }
     } catch (err) {
-      setLocalValue(value.value.toString())
-      setIsValid(false)
+      setLocalValue(value.value.toString());
+      setIsValid(false);
     }
-    setIsEditing(false)
-  }, [localValue, localUnit, min, max, onChange, value.value])
+    setIsEditing(false);
+  }, [localValue, localUnit, min, max, onChange, value.value]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleFinishEdit()
-    } else if (e.key === "Escape") {
-      setLocalValue(value.value.toString())
-      setIsEditing(false)
-      setIsValid(true)
-    }
-  }, [handleFinishEdit, value.value])
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        handleFinishEdit();
+      } else if (e.key === "Escape") {
+        setLocalValue(value.value.toString());
+        setIsEditing(false);
+        setIsValid(true);
+      }
+    },
+    [handleFinishEdit, value.value],
+  );
 
   return (
     <div className="flex gap-2">
@@ -110,7 +130,11 @@ export default function UnitInput({
           onBlur={handleFinishEdit}
           onKeyDown={handleKeyDown}
           className={`${className} ${compact ? "text-xs h-8 px-2" : ""} ${
-            isEditing ? (isValid ? "pr-8 border-green-500" : "pr-8 border-red-500") : ""
+            isEditing
+              ? isValid
+                ? "pr-8 border-green-500"
+                : "pr-8 border-red-500"
+              : ""
           }`}
         />
         {isEditing && (
@@ -136,5 +160,5 @@ export default function UnitInput({
         </SelectContent>
       </Select>
     </div>
-  )
+  );
 }

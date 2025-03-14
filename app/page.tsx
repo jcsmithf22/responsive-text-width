@@ -218,8 +218,8 @@ export default function Home() {
                     id="lineHeight"
                     value={lineHeight}
                     onChange={setLineHeight}
-                    min={0}
-                    max={10}
+                    min={-1000}
+                    max={1000}
                     allowedUnits={["", "px", "em", "rem", "%"]}
                   />
                 </div>
@@ -230,8 +230,8 @@ export default function Home() {
                     id="letterSpacing"
                     value={letterSpacing}
                     onChange={setLetterSpacing}
-                    min={-50}
-                    max={50}
+                    min={-1000}
+                    max={1000}
                     allowedUnits={["px", "em", "rem", "%", "ch"]}
                   />
                 </div>
