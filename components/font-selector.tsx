@@ -41,6 +41,12 @@ interface FontDetails {
   variants?: FontVariant
 }
 
+interface FontOption {
+  id: string
+  family: string
+  isVariable?: boolean
+}
+
 // Cache for loaded fonts and their details
 const loadedFonts = new Map<string, Promise<FontDetails>>()
 const loadedFontFaces = new Set<string>()
@@ -53,10 +59,19 @@ const commonFonts = [
   'anton', 'exo-2', 'orbitron', 'inconsolata', 'space-mono'
 ]
 
+// Function to get CDN URL for a font
+const getFontUrl = (fontId: string, subset: string, isVariable: boolean, weight?: number, style?: string) => {
+  if (isVariable) {
+    return `https://cdn.jsdelivr.net/fontsource/fonts/${fontId}:vf@latest/${subset}-wght-${style || 'normal'}.woff2`
+  }
+  return `https://cdn.jsdelivr.net/fontsource/fonts/${fontId}@latest/${subset}-${weight}-${style || 'normal'}.woff2`
+}
+
 // Function to load font details and create FontFace
-const loadFont = async (fontId: string, family: string): Promise<boolean> => {
+const loadFont = async (fontId: string, family: string, isVariable = false): Promise<boolean> => {
   // Return early if the font is already loaded
-  if (loadedFontFaces.has(fontId)) return true
+  const fontKey = isVariable ? `${fontId}-variable` : fontId
+  if (loadedFontFaces.has(fontKey)) return true
 
   try {
     // Fetch font details if not already fetching
@@ -71,29 +86,32 @@ const loadFont = async (fontId: string, family: string): Promise<boolean> => {
     }
 
     const fontDetails = await fontDetailsPromise
-
-    // Get the default weight and style
-    const weight = fontDetails.weights.includes(400) ? 400 : fontDetails.weights[0]
-    const style = fontDetails.styles.includes('normal') ? 'normal' : fontDetails.styles[0]
     const subset = fontDetails.defSubset || 'latin'
+    const style = fontDetails.styles.includes('normal') ? 'normal' : fontDetails.styles[0]
 
-    // Ensure we have the necessary variant data
-    const variant = fontDetails.variants?.[weight]?.[style]?.[subset]
-    if (!variant?.url?.woff2) {
-      throw new Error(`Font variant not found for ${family}`)
-    }
+    // Create the font family name for variable fonts
+    const familyName = isVariable ? `${family} Variable` : family
+    
+    // Get the URL based on whether it's a variable font
+    const url = getFontUrl(
+      fontId,
+      subset,
+      isVariable,
+      !isVariable ? (fontDetails.weights.includes(400) ? 400 : fontDetails.weights[0]) : undefined,
+      style
+    )
 
     // Create and load the FontFace
-    const fontFace = new FontFace(family, `url(${variant.url.woff2})`, {
-      weight: weight.toString(),
+    const fontFace = new FontFace(familyName, `url(${url})`, {
       style,
-      display: commonFonts.includes(fontId) ? 'swap' : 'optional' // Use swap for common fonts
+      display: commonFonts.includes(fontId) ? 'swap' : 'optional',
+      ...(isVariable ? { weight: '100 900' } : { weight: '400' })
     })
 
     // Load the font and add it to the document
     await fontFace.load()
     document.fonts.add(fontFace)
-    loadedFontFaces.add(fontId)
+    loadedFontFaces.add(fontKey)
 
     return true
   } catch (error) {
@@ -106,7 +124,7 @@ const loadFont = async (fontId: string, family: string): Promise<boolean> => {
 
 const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
   const [loading, setLoading] = React.useState(false)
-  const [fonts, setFonts] = React.useState<Array<{ id: string, family: string }>>([])
+  const [fonts, setFonts] = React.useState<FontOption[]>([])
   const [error, setError] = React.useState<string | null>(null)
 
   // Fetch fonts when component mounts
@@ -115,18 +133,31 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
       setLoading(true)
       setError(null)
       try {
-        const response = await fetch("https://api.fontsource.org/v1/fonts")
+        const response = await fetch("https://api.fontsource.org/v1/fonts?type=google")
         if (!response.ok) throw new Error(`Failed to fetch fonts: ${response.statusText}`)
         
         const fontList = await response.json() as FontDetails[]
         
-        // Filter out icon fonts and transform to our format
+        // Filter out icon fonts and transform to our format, including variable versions
         const processedFonts = fontList
-          .filter(font => !font.family.toLowerCase().includes('icon'))
-          .map(font => ({
-            id: font.id,
-            family: font.family
-          }))
+          .flatMap(font => {
+            const fonts = [{
+              id: font.id,
+              family: font.family,
+              isVariable: false
+            }]
+            
+            // Add variable version if available
+            if (font.variable) {
+              fonts.push({
+                id: font.id,
+                family: `${font.family} Variable`,
+                isVariable: true
+              })
+            }
+            
+            return fonts
+          })
 
         setFonts(processedFonts)
 
@@ -135,7 +166,7 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
           commonFonts.map(async (fontId) => {
             const font = processedFonts.find(f => f.id === fontId)
             if (font) {
-              await loadFont(font.id, font.family)
+              await loadFont(font.id, font.family, font.isVariable)
             }
           })
         )
@@ -156,7 +187,7 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
     if (!font) return
 
     try {
-      const success = await loadFont(font.id, font.family)
+      const success = await loadFont(font.id, font.family, font.isVariable)
       if (!success) {
         throw new Error(`Failed to load font ${font.family}`)
       }
@@ -189,7 +220,7 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
       <VirtualizedCombobox
         options={fonts.map(f => f.family)}
         searchPlaceholder="Select a font..."
-        width="100%"
+        width="300px"
         height="300px"
         value={value}
         onChange={handleSelect}
