@@ -33,12 +33,12 @@ interface FontDetails {
   weights: number[]
   styles: string[]
   defSubset: string
-  unicodeRange: Record<string, string>
   variable: boolean
   category: string
   version: string
   type: string
-  variants: FontVariant
+  lastModified: string
+  variants?: FontVariant
 }
 
 // Cache for loaded fonts and their details
@@ -78,7 +78,7 @@ const loadFont = async (fontId: string, family: string): Promise<boolean> => {
     const subset = fontDetails.defSubset || 'latin'
 
     // Ensure we have the necessary variant data
-    const variant = fontDetails.variants[weight]?.[style]?.[subset]
+    const variant = fontDetails.variants?.[weight]?.[style]?.[subset]
     if (!variant?.url?.woff2) {
       throw new Error(`Font variant not found for ${family}`)
     }
@@ -87,7 +87,6 @@ const loadFont = async (fontId: string, family: string): Promise<boolean> => {
     const fontFace = new FontFace(family, `url(${variant.url.woff2})`, {
       weight: weight.toString(),
       style,
-      unicodeRange: fontDetails.unicodeRange[subset],
       display: commonFonts.includes(fontId) ? 'swap' : 'optional' // Use swap for common fonts
     })
 
@@ -116,33 +115,25 @@ const FontSelector: React.FC<FontSelectorProps> = ({ value, onChange }) => {
       setLoading(true)
       setError(null)
       try {
-        const response = await fetch("https://api.fontsource.org/fontlist?family")
+        const response = await fetch("https://api.fontsource.org/v1/fonts")
         if (!response.ok) throw new Error(`Failed to fetch fonts: ${response.statusText}`)
         
-        const fontMap = await response.json() as Record<string, string>
+        const fontList = await response.json() as FontDetails[]
         
-        // Convert the font map to our format and filter out icon fonts
-        const fontList = Object.entries(fontMap)
-          .filter(([_, family]) => !family.toLowerCase().includes('icon'))
-          .map(([id, family]) => ({
-            id,
-            family
+        // Filter out icon fonts and transform to our format
+        const processedFonts = fontList
+          .filter(font => !font.family.toLowerCase().includes('icon'))
+          .map(font => ({
+            id: font.id,
+            family: font.family
           }))
-          // Sort with common fonts first, then alphabetically
-          .sort((a, b) => {
-            const aIsCommon = commonFonts.includes(a.id)
-            const bIsCommon = commonFonts.includes(b.id)
-            if (aIsCommon && !bIsCommon) return -1
-            if (!aIsCommon && bIsCommon) return 1
-            return a.family.localeCompare(b.family)
-          })
 
-        setFonts(fontList)
+        setFonts(processedFonts)
 
         // Preload common fonts in parallel
         await Promise.allSettled(
           commonFonts.map(async (fontId) => {
-            const font = fontList.find(f => f.id === fontId)
+            const font = processedFonts.find(f => f.id === fontId)
             if (font) {
               await loadFont(font.id, font.family)
             }
