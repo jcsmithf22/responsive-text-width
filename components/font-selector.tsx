@@ -203,14 +203,16 @@ const FontSelector: React.FC<FontSelectorProps> = ({
           return fonts;
         });
 
-        const systemFonts: FontOption[] = ["serif", "sans-serif", "mono"].map(
-          (s) => ({
-            id: s,
-            family: s,
-            isVariable: false,
-            weights: [400],
-          }),
-        );
+        const systemFonts: FontOption[] = [
+          "serif",
+          "sans-serif",
+          "monospace",
+        ].map((s) => ({
+          id: s,
+          family: s,
+          isVariable: false,
+          weights: [400],
+        }));
         const allFonts = [...systemFonts, ...processedFonts];
         setFonts(allFonts);
         if (onWeightsChange) {
@@ -250,7 +252,7 @@ const FontSelector: React.FC<FontSelectorProps> = ({
 
   // Handle font selection
   const handleSelect = async (fontFamily: string) => {
-    if (["serif", "sans-serif", "mono"].includes(fontFamily)) {
+    if (["serif", "sans-serif", "monospace"].includes(fontFamily)) {
       onChange(fontFamily);
       if (onWeightsChange) onWeightsChange([400]);
       return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, forwardRef, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import FontFaceObserver from "fontfaceobserver";
 
 // Define types for units
@@ -143,6 +143,13 @@ const FitText = ({
 
   // Check if font is loaded using Font Loading API and document.fonts.check
   const checkFontLoaded = useCallback(async () => {
+    if (
+      ["serif", "sans-serif", "monospace"].includes(fontFamily.toLowerCase())
+    ) {
+      setIsFontLoaded(true);
+      measureText();
+      return;
+    }
     try {
       // Try loading with FontFaceObserver first
       const font = new FontFaceObserver(fontFamily, {

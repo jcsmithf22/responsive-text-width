@@ -35,6 +35,17 @@ export default function Home() {
     value: 0,
     unit: "px",
   });
+  const weightLabels: Record<string, string> = {
+    "100": "Thin",
+    "200": "Extra Light",
+    "300": "Light",
+    "400": "Regular",
+    "500": "Medium",
+    "600": "Semi Bold",
+    "700": "Bold",
+    "800": "Extra Bold",
+    "900": "Black",
+  };
 
   // SVG state
   const [svgCode, setSvgCode] = useState("");
@@ -168,24 +179,7 @@ export default function Home() {
                           className="font-['Inter']"
                           style={{ fontWeight: weight }}
                         >
-                          {weight === 400
-                            ? "Regular"
-                            : weight === 500
-                              ? "Medium"
-                              : weight === 600
-                                ? "Semi Bold"
-                                : weight === 700
-                                  ? "Bold"
-                                  : weight === 800
-                                    ? "Extra Bold"
-                                    : weight === 900
-                                      ? "Black"
-                                      : weight === 300
-                                        ? "Light"
-                                        : weight === 200
-                                          ? "Extra Light"
-                                          : "Thin"}{" "}
-                          ({weight})
+                          {weightLabels[weight.toString()] || "Thin"} ({weight})
                         </SelectItem>
                       ))}
                     </SelectContent>
