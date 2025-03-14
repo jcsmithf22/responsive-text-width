@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify, Copy } from "lucide-react"
+import { Bold, Italic, AlignLeft, AlignCenter, AlignRight, AlignJustify, Copy, Loader2 } from "lucide-react"
 import UnitInput from "@/components/unit-input"
 import FontSelector from "@/components/font-selector"
 import { ValidatedInput } from "@/components/validated-input"
@@ -28,6 +28,7 @@ export default function TextEditor() {
   const [showFontSize, setShowFontSize] = useState(false)
   const [fontSize, setFontSize] = useState(200)
   const [fontWeight, setFontWeight] = useState(500)
+  const [availableWeights, setAvailableWeights] = useState<number[]>([400])
   const [lineHeight, setLineHeight] = useState<ValueWithUnit>({ value: 1.0, unit: "" })
   const [letterSpacing, setLetterSpacing] = useState<ValueWithUnit>({ value: 0, unit: "px" })
 
@@ -35,6 +36,32 @@ export default function TextEditor() {
   const [svgCode, setSvgCode] = useState("")
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const svgRef = useRef<SVGSVGElement>(null)
+
+  // Handle font weight changes
+  const handleFontWeightsChange = (weights: number[]) => {
+    setAvailableWeights(weights.sort((a, b) => a - b))
+    // If current weight is not available, switch to closest available weight
+    if (!weights.includes(fontWeight)) {
+      const closestWeight = weights.reduce((prev, curr) => 
+        Math.abs(curr - fontWeight) < Math.abs(prev - fontWeight) ? curr : prev
+      )
+      setFontWeight(closestWeight)
+    }
+  }
+
+  // Handle font weight selection
+  const handleFontWeightChange = (value: string) => {
+    const newWeight = Number(value)
+    if (!availableWeights.includes(newWeight)) {
+      // If weight is not available, find the closest available weight
+      const closestWeight = availableWeights.reduce((prev, curr) => 
+        Math.abs(curr - newWeight) < Math.abs(prev - newWeight) ? curr : prev
+      )
+      setFontWeight(closestWeight)
+    } else {
+      setFontWeight(newWeight)
+    }
+  }
 
   // Copy SVG code to clipboard
   const copyToClipboard = async () => {
@@ -96,7 +123,11 @@ export default function TextEditor() {
 
                 <div className="space-y-3">
                   <Label htmlFor="fontFamily">Font Family</Label>
-                  <FontSelector value={fontFamily} onChange={setFontFamily} />
+                  <FontSelector 
+                    value={fontFamily} 
+                    onChange={setFontFamily}
+                    onWeightsChange={handleFontWeightsChange}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between py-2 px-1">
@@ -106,14 +137,19 @@ export default function TextEditor() {
 
                 <div className="space-y-3">
                   <Label htmlFor="fontWeight">Font Weight</Label>
-                  <Select value={fontWeight.toString()} onValueChange={(value) => setFontWeight(Number(value))}>
+                  <Select 
+                    value={fontWeight.toString()} 
+                    onValueChange={handleFontWeightChange}
+                  >
                     <SelectTrigger
                       id="fontWeight"
                     >
-                      <SelectValue placeholder="Select weight" />
+                      <SelectValue placeholder="Select weight">
+                        {fontWeight}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px] overflow-y-auto">
-                      {[100, 200, 300, 400, 500, 600, 700, 800, 900].map((weight) => (
+                      {availableWeights.map((weight) => (
                         <SelectItem
                           key={weight}
                           value={weight.toString()}
