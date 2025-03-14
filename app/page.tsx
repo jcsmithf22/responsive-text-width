@@ -150,7 +150,9 @@ export default function Home() {
                 <LocalFontUploader
                   onUpload={(fontName) => {
                     setFontFamily(fontName);
-                    setAvailableWeights([400]);
+                    setAvailableWeights([
+                      100, 200, 300, 400, 500, 600, 700, 800, 900,
+                    ]);
                   }}
                 />
               </div>
