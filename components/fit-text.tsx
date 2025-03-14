@@ -35,8 +35,8 @@ const FitText = (
   const measureTextDebounceRef = useRef<number | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [isFontLoaded, setIsFontLoaded] = useState(false)
-  const svgRef = useRef<string>("")
-  const cachedSvgRef = useRef<string>("")
+
+  console.log(textWidth, viewBoxHeight)
 
   // Create and cache canvas context
   useEffect(() => {

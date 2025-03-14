@@ -44,43 +44,45 @@ export default function TextEditor() {
   }
 
   useEffect(() => {
-    console.log("svgRef", svgRef.current)
-    const svg = svgRef.current
-    if (!svg) return
 
-    const viewBox = svg.viewBox.baseVal
-    setDimensions({
-      width: Math.round(viewBox.width),
-      height: Math.round(viewBox.height),
+    // Wait for next frame to ensure SVG has updated
+    requestAnimationFrame(() => {
+      const svg = svgRef.current
+      if (!svg) return
+      const viewBox = svg.viewBox.baseVal
+      setDimensions({
+        width: Math.round(viewBox.width),
+        height: Math.round(viewBox.height),
+      })
+
+      // Add proper indentation and format
+      const formattedSvgData = svg.outerHTML
+        .replace(/>\s+</g, ">\n<")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/<svg/g, "\n<svg")
+        .replace(/<foreignObject/g, "\n  <foreignObject")
+        .replace(/<div/g, "\n    <div")
+        .replace(/<\/div>/g, "</div>\n  ")
+        .replace(/<\/foreignObject>/g, "</foreignObject>\n")
+        .replace(/<\/svg>/g, "</svg>\n")
+
+      setSvgCode(formattedSvgData)
     })
-
-    // Add proper indentation and format
-    const formattedSvgData = svg.outerHTML
-      .replace(/>\s+</g, ">\n<")
-      .replace(/\s+/g, " ")
-      .trim()
-      .replace(/<svg/g, "\n<svg")
-      .replace(/<foreignObject/g, "\n  <foreignObject")
-      .replace(/<div/g, "\n    <div")
-      .replace(/<\/div>/g, "</div>\n  ")
-      .replace(/<\/foreignObject>/g, "</foreignObject>\n")
-      .replace(/<\/svg>/g, "</svg>\n")
-
-    setSvgCode(formattedSvgData)
   }, [text, fontSize, lineHeight, letterSpacing, fontFamily, fontWeight])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 py-8">
+    <div className="min-h-screen bg-zinc-950 py-8">
       <div className="container mx-auto px-4 max-w-7xl">
         <h1 className="text-4xl font-bold mb-12 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">SVG Text Editor</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6">
-            <Card className="border-0 shadow-lg dark:shadow-slate-900/50">
-              <CardHeader className="border-b bg-white dark:bg-slate-900/50 px-6">
+            <Card className="border-0 shadow-lg dark:shadow-slate-900/50 p-1 bg-zinc-900 ring-1 ring-white/15 rounded-2xl">
+              <CardHeader className="">
                 <CardTitle className="text-xl text-slate-800 dark:text-slate-200">Text & Font</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6 p-6">
+              <CardContent className="space-y-6 p-6 dark:bg-zinc-950 ring-1 ring-white/20 rounded-xl">
                 <div className="space-y-3">
                   <Label htmlFor="text">Text</Label>
                   <ValidatedInput
@@ -171,13 +173,13 @@ export default function TextEditor() {
           </div>
 
           <div className="space-y-6">
-            <Card className="border-0 shadow-lg dark:shadow-slate-900/50">
-              <CardHeader className="border-b bg-white dark:bg-slate-900/50 px-6">
+            <Card className="border-0 shadow-lg bg-zinc-900 ring-1 ring-white/15 rounded-2xl p-1">
+              <CardHeader className="">
                 <CardTitle className="text-xl text-slate-800 dark:text-slate-200">Preview</CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-6 ring-white/20 ring-1 rounded-xl bg-zinc-950">
                 <div className="w-full overflow-hidden rounded-lg bg-white dark:bg-slate-800 p-6 shadow-inner">
-                  <div className="rounded-lg outline outline-1 outline-dashed outline-slate-400">
+                  <div className="rounded-lg outline-1 outline-dashed outline-slate-400">
                     <FitText
                       ref={svgRef}
                       text={text}
@@ -192,26 +194,26 @@ export default function TextEditor() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg dark:shadow-slate-900/50">
-              <CardHeader className="flex flex-row items-center justify-between border-b bg-white dark:bg-slate-900/50 px-6">
+            <Card className="border-0 shadow-lg dark:shadow-slate-900/50 p-1 bg-zinc-900 ring-1 ring-white/15 rounded-2xl">
+              <CardHeader className="">
                 <CardTitle className="text-xl text-slate-800 dark:text-slate-200">SVG Code</CardTitle>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={copyToClipboard}
-                  className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-6 ring-white/20 ring-1 rounded-xl bg-zinc-950">
                 <div className="relative">
-                  <pre className="max-h-[400px] overflow-auto rounded-b-lg bg-slate-950 p-6 text-sm text-slate-50 font-mono">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={copyToClipboard}
+                    className="absolute right-2 top-2 z-10"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <pre className="overflow-auto rounded-lg bg-zinc-900 p-4 text-sm text-slate-50 font-mono max-h-[400px]">
                     <code>{svgCode}</code>
                   </pre>
-                </div>
-                <div className="mt-4 px-6 pb-4 text-sm text-slate-500 dark:text-slate-400 font-medium">
-                  Dimensions: {dimensions.width} × {dimensions.height} px
+                  <div className="mt-4 text-sm text-slate-400 font-medium">
+                    Dimensions: {dimensions.width} × {dimensions.height} px
+                  </div>
                 </div>
               </CardContent>
             </Card>
