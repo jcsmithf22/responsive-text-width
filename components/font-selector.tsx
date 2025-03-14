@@ -1,14 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Loader2 } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Loader2 } from "lucide-react";
 import { VirtualizedCombobox } from "./virtual-combobox";
 
 interface FontSelectorProps {
@@ -162,6 +155,7 @@ const FontSelector: React.FC<FontSelectorProps> = ({
   onFontWeightSupport,
 }) => {
   const [loading, setLoading] = React.useState(false);
+  const [fontLoading, setFontLoading] = React.useState(false);
   const [fonts, setFonts] = React.useState<FontOption[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -261,12 +255,14 @@ const FontSelector: React.FC<FontSelectorProps> = ({
     if (!font) return;
 
     try {
+      setFontLoading(true);
       const success = await loadFont(
         font.id,
         font.family,
         font.isVariable,
         font.weights,
       );
+      setFontLoading(false);
       if (!success) {
         throw new Error(`Failed to load font ${font.family}`);
       }
@@ -278,20 +274,21 @@ const FontSelector: React.FC<FontSelectorProps> = ({
 
       onChange(fontFamily);
     } catch (error) {
+      setFontLoading(false);
       const message =
         error instanceof Error ? error.message : "Failed to load font";
       setError(message);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        Loading fonts...
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+  //       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+  //       Loading fonts...
+  //     </div>
+  //   );
+  // }
 
   if (error) {
     return (
@@ -301,14 +298,19 @@ const FontSelector: React.FC<FontSelectorProps> = ({
 
   return (
     <div className="w-full">
-      <VirtualizedCombobox
-        options={fonts.map((f) => f.family)}
-        searchPlaceholder="Select a font..."
-        width="300px"
-        height="300px"
-        value={value}
-        onChange={handleSelect}
-      />
+      <div className="flex items-center">
+        <VirtualizedCombobox
+          options={fonts.map((f) => f.family)}
+          searchPlaceholder="Select a font..."
+          width="300px"
+          height="300px"
+          value={value}
+          onChange={handleSelect}
+        />
+        {(loading || fontLoading) && (
+          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+        )}
+      </div>
     </div>
   );
 };

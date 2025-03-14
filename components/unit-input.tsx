@@ -148,7 +148,7 @@ export default function UnitInput({
         )}
       </div>
       <Select value={localUnit || "none"} onValueChange={handleUnitChange}>
-        <SelectTrigger className={`w-20 ${compact ? "text-xs h-8 px-2" : ""}`}>
+        <SelectTrigger className={`w-24 ${compact ? "text-xs h-8 px-2" : ""}`}>
           <SelectValue placeholder="Unit" />
         </SelectTrigger>
         <SelectContent>
