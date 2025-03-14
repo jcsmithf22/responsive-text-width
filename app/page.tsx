@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Copy } from "lucide-react";
 import UnitInput from "@/components/unit-input";
 import FontSelector from "@/components/font-selector";
+import LocalFontUploader from "@/components/LocalFontUploader";
 import { ValidatedInput } from "@/components/validated-input";
 import FitText from "@/components/fit-text";
 import { ValueWithUnit } from "@/types";
@@ -121,165 +122,152 @@ export default function Home() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-6">
-            <Card className="card border-0 shadow-lg p-1 bg-background-quiet ring-1 ring-foreground/15 rounded-2xl gap-2">
-              <CardHeader className="">
-                <CardTitle className="text-xl text-foreground/75 mt-2">
-                  Text & Font
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6 p-6 bg-background ring-1 ring-foreground/20 rounded-xl">
+            <StyledCard title="Text & Font">
+              <div className="space-y-3">
+                <Label htmlFor="text">Text</Label>
+                <ValidatedInput
+                  id="text"
+                  value={text}
+                  onChange={(value: string | number) =>
+                    setText(value.toString())
+                  }
+                  validate={(value: string | number) =>
+                    value.toString().length > 0
+                  }
+                  placeholder="Enter text"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="fontFamily">Font Family</Label>
+                <FontSelector
+                  value={fontFamily}
+                  onChange={setFontFamily}
+                  onWeightsChange={handleFontWeightsChange}
+                />
+              </div>
+              <div className="space-y-3">
+                <LocalFontUploader
+                  onUpload={(fontName) => {
+                    setFontFamily(fontName);
+                    setAvailableWeights([400]);
+                  }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2 px-1">
+                <Label>Show Font Size</Label>
+                <Switch
+                  checked={showFontSize}
+                  onCheckedChange={setShowFontSize}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="fontWeight">Font Weight</Label>
+                <Select
+                  value={fontWeight.toString()}
+                  onValueChange={handleFontWeightChange}
+                >
+                  <SelectTrigger id="fontWeight">
+                    <SelectValue placeholder="Select weight">
+                      {fontWeight}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px] overflow-y-auto">
+                    {availableWeights.map((weight) => (
+                      <SelectItem
+                        key={weight}
+                        value={weight.toString()}
+                        className="font-['Inter']"
+                        style={{ fontWeight: weight }}
+                      >
+                        {weightLabels[weight.toString()] || "Thin"} ({weight})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {showFontSize && (
                 <div className="space-y-3">
-                  <Label htmlFor="text">Text</Label>
+                  <Label htmlFor="fontSize">Font Size (px)</Label>
                   <ValidatedInput
-                    id="text"
-                    value={text}
+                    id="fontSize"
+                    type="number"
+                    value={fontSize}
                     onChange={(value: string | number) =>
-                      setText(value.toString())
+                      setFontSize(Number(value))
                     }
-                    validate={(value: string | number) =>
-                      value.toString().length > 0
-                    }
-                    placeholder="Enter text"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="fontFamily">Font Family</Label>
-                  <FontSelector
-                    value={fontFamily}
-                    onChange={setFontFamily}
-                    onWeightsChange={handleFontWeightsChange}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between py-2 px-1">
-                  <Label>Show Font Size</Label>
-                  <Switch
-                    checked={showFontSize}
-                    onCheckedChange={setShowFontSize}
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="fontWeight">Font Weight</Label>
-                  <Select
-                    value={fontWeight.toString()}
-                    onValueChange={handleFontWeightChange}
-                  >
-                    <SelectTrigger id="fontWeight">
-                      <SelectValue placeholder="Select weight">
-                        {fontWeight}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px] overflow-y-auto">
-                      {availableWeights.map((weight) => (
-                        <SelectItem
-                          key={weight}
-                          value={weight.toString()}
-                          className="font-['Inter']"
-                          style={{ fontWeight: weight }}
-                        >
-                          {weightLabels[weight.toString()] || "Thin"} ({weight})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {showFontSize && (
-                  <div className="space-y-3">
-                    <Label htmlFor="fontSize">Font Size (px)</Label>
-                    <ValidatedInput
-                      id="fontSize"
-                      type="number"
-                      value={fontSize}
-                      onChange={(value: string | number) =>
-                        setFontSize(Number(value))
-                      }
-                      validate={(value: string | number) => {
-                        const num = Number(value);
-                        return !isNaN(num) && num >= 1 && num <= 1000;
-                      }}
-                      min={1}
-                      max={1000}
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  <Label htmlFor="lineHeight">Line Height</Label>
-                  <UnitInput
-                    id="lineHeight"
-                    value={lineHeight}
-                    onChange={setLineHeight}
-                    min={-1000}
+                    validate={(value: string | number) => {
+                      const num = Number(value);
+                      return !isNaN(num) && num >= 1 && num <= 1000;
+                    }}
+                    min={1}
                     max={1000}
-                    allowedUnits={["", "px", "em", "rem", "%"]}
                   />
                 </div>
+              )}
 
-                <div className="space-y-3">
-                  <Label htmlFor="letterSpacing">Letter Spacing</Label>
-                  <UnitInput
-                    id="letterSpacing"
-                    value={letterSpacing}
-                    onChange={setLetterSpacing}
-                    min={-1000}
-                    max={1000}
-                    allowedUnits={["px", "em", "rem", "%", "ch"]}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+              <div className="space-y-3">
+                <Label htmlFor="lineHeight">Line Height</Label>
+                <UnitInput
+                  id="lineHeight"
+                  value={lineHeight}
+                  onChange={setLineHeight}
+                  min={-1000}
+                  max={1000}
+                  allowedUnits={["", "px", "em", "rem", "%"]}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="letterSpacing">Letter Spacing</Label>
+                <UnitInput
+                  id="letterSpacing"
+                  value={letterSpacing}
+                  onChange={setLetterSpacing}
+                  min={-1000}
+                  max={1000}
+                  allowedUnits={["px", "em", "rem", "%", "ch"]}
+                />
+              </div>
+            </StyledCard>
           </div>
 
           <div className="space-y-6">
-            <Card className="border-0 shadow-lg p-1 bg-background-quiet ring-1 ring-foreground/15 rounded-2xl">
-              <CardHeader className="">
-                <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
-                  Preview
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6 p-6 bg-background ring-1 ring-foreground/20 rounded-xl">
-                <div className="rounded-lg outline-1 outline-dashed outline-muted-foreground">
-                  <FitText
-                    ref={svgRef}
-                    text={text}
-                    fontFamily={fontFamily}
-                    fontSize={fontSize}
-                    fontWeight={fontWeight}
-                    lineHeight={lineHeight}
-                    letterSpacing={letterSpacing}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <StyledCard title="Preview">
+              <div className="rounded-lg outline-1 outline-dashed outline-muted-foreground">
+                <FitText
+                  ref={svgRef}
+                  text={text}
+                  fontFamily={fontFamily}
+                  fontSize={fontSize}
+                  fontWeight={fontWeight}
+                  lineHeight={lineHeight}
+                  letterSpacing={letterSpacing}
+                />
+              </div>
+            </StyledCard>
 
-            <Card className="border-0 shadow-lg p-1 bg-background-quiet ring-1 ring-foreground/15 rounded-2xl">
-              <CardHeader className="">
-                <CardTitle className="text-xl text-slate-800 dark:text-slate-200">
-                  SVG Code
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 ring-foreground/20 ring-1 rounded-xl bg-background">
-                <div className="relative">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={copyToClipboard}
-                    className="absolute right-2 top-2 z-10"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  <pre className="overflow-auto rounded-lg bg-background-quiet p-4 text-sm text-foreground font-mono max-h-[400px]">
-                    <code>{svgCode}</code>
-                  </pre>
-                  <div className="mt-4 text-sm text-muted-foreground font-medium">
-                    Dimensions: {dimensions.width} × {dimensions.height} px
-                  </div>
+            <StyledCard title="SVG Code">
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={copyToClipboard}
+                  className="absolute right-2 top-2 z-10"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <pre className="overflow-auto rounded-lg bg-background-quiet p-4 text-sm text-foreground font-mono max-h-[400px]">
+                  <code>{svgCode}</code>
+                </pre>
+                <div className="mt-4 text-sm text-muted-foreground font-medium">
+                  Dimensions: {dimensions.width} × {dimensions.height} px
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </StyledCard>
           </div>
         </div>
       </div>
@@ -294,12 +282,16 @@ function StyledCard({
   children: React.ReactNode;
   title: string;
 }) {
-  <Card className="card border-0 shadow-lg p-1 bg-background-quiet ring-1 ring-foreground/15 rounded-2xl gap-2">
-    <CardHeader className="">
-      <CardTitle className="text-xl text-foreground/75 mt-2">{title}</CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-6 p-6 bg-background ring-1 ring-foreground/20 rounded-xl">
-      {children}
-    </CardContent>
-  </Card>;
+  return (
+    <Card className="card border-0 shadow-lg p-1 bg-background-quiet ring-1 ring-foreground/15 rounded-2xl gap-2">
+      <CardHeader className="px-3">
+        <CardTitle className="text-xl text-foreground/75 mt-2">
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6 p-6 bg-background ring-1 ring-foreground/20 rounded-xl">
+        {children}
+      </CardContent>
+    </Card>
+  );
 }

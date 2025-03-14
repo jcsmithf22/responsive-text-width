@@ -211,7 +211,7 @@ const FontSelector: React.FC<FontSelectorProps> = ({
           id: s,
           family: s,
           isVariable: false,
-          weights: [400],
+          weights: [100, 200, 300, 400, 500, 600, 700, 800, 900],
         }));
         const allFonts = [...systemFonts, ...processedFonts];
         setFonts(allFonts);
