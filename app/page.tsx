@@ -289,7 +289,7 @@ function StyledCard({
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6 p-6 bg-background ring-1 ring-foreground/20 rounded-xl">
+      <CardContent className="space-y-6 p-6 bg-background dark:bg-muted ring-1 ring-foreground/20 rounded-xl">
         {children}
       </CardContent>
     </Card>
